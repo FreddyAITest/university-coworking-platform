@@ -10,7 +10,7 @@ A web platform that connects to a shared OneDrive space, uses AI to sort univers
 |-------|--------|-----------|
 | Frontend | React + Vite | Fast, simple SPA, easy to deploy |
 | Backend | Node.js + Express | JS everywhere, massive ecosystem, simple |
-| Auth | Google OAuth 2.0 + Passport.js | Standard, well-documented, free |
+| Auth | Supabase Auth (Google OAuth provider) | Managed, JWT-based, free tier |
 | AI | Claude API (Anthropic SDK) | Best doc understanding, already in toolchain |
 | Storage | Microsoft Graph API (OneDrive) | Direct integration, no extra infra |
 | Database | SQLite (via better-sqlite3) | Zero setup, enough for single-user/small team |
@@ -28,7 +28,7 @@ A web platform that connects to a shared OneDrive space, uses AI to sort univers
 ┌──────────────────────────────────────────────────┐
 │              Express API Server                   │
 │                                                   │
-│  /api/auth/*       Google OAuth flow              │
+│  /api/auth/*       Supabase JWT verification       │
 │  /api/docs/*       Document listing & search      │
 │  /api/overview/*   Task overview (day/week/month) │
 │  /api/sort/*       Trigger/manage doc sorting     │
@@ -49,12 +49,13 @@ A web platform that connects to a shared OneDrive space, uses AI to sort univers
 
 ## Component Details
 
-### 1. Google OAuth (`/api/auth/*`)
+### 1. Auth (`/api/auth/*`)
 
-- Passport.js Google strategy
-- Session-based auth (express-session + SQLite store)
-- Middleware protects all `/api/*` routes except auth callbacks
+- Supabase Auth with Google as OAuth provider
+- Client-side sign-in via `@supabase/supabase-js` OAuth flow
+- Server validates Supabase JWT on every request (Bearer token)
 - User whitelist in config (only allowed Google accounts can log in)
+- Users auto-synced to local SQLite on first authenticated request
 
 ### 2. OneDrive Integration (`/api/docs/*`)
 
@@ -82,14 +83,14 @@ A web platform that connects to a shared OneDrive space, uses AI to sort univers
 - React + Vite SPA
 - Pages: Dashboard (overview), Documents (browse/sort), Settings
 - Simple clean UI — no design system, just clean CSS or Tailwind
-- Google Sign-In button → redirect to backend auth
+- Google Sign-In button → Supabase OAuth redirect
 
 ## Implementation Phases
 
 ### Phase 1: Foundation (1-2 days)
-- Express server with Google OAuth
-- React shell with login page
-- SQLite schema (users, sessions, config)
+- Express server with Supabase JWT verification
+- React shell with Supabase login page
+- SQLite schema (users, tasks, documents)
 
 ### Phase 2: OneDrive Connection (1-2 days)
 - Microsoft Graph API integration
@@ -129,8 +130,8 @@ A web platform that connects to a shared OneDrive space, uses AI to sort univers
 
 ## Security Notes
 
-- Google OAuth ensures only authorized users access the site
+- Supabase Auth (Google OAuth) ensures only authorized users access the site
+- JWT-based auth — no sessions, no cookies
 - OneDrive credentials stored as env vars, never in code
 - Claude API key server-side only
-- Sessions in HTTP-only cookies
 - No user data leaves the server except to Claude API (processing) and OneDrive (storage)

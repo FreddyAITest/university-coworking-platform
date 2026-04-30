@@ -1,10 +1,9 @@
 import 'dotenv/config';
 import express from 'express';
-import session from 'express-session';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { configureAuth, requireAuth } from './auth.js';
+import { requireAuth } from './auth.js';
 import documentsRouter from './routes/documents.js';
 import sortRouter from './routes/sort.js';
 import overviewRouter from './routes/overview.js';
@@ -15,31 +14,14 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 },
-}));
 
-const passport = configureAuth();
-app.use(passport.initialize());
-app.use(passport.session());
-
-// Auth routes
-app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-app.get('/api/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login?error=auth_failed' }),
-  (_req, res) => res.redirect('/dashboard')
-);
-
+// Auth routes (Supabase handles OAuth on the client; server only validates tokens)
 app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
 
-app.get('/api/auth/logout', (req, res) => {
-  req.logout(() => res.json({ ok: true }));
+app.post('/api/auth/logout', (_req, res) => {
+  res.json({ ok: true });
 });
 
 // Document / OneDrive routes

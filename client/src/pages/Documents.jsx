@@ -1,16 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 
-export default function Documents({ user }) {
+export default function Documents({ user, supabase }) {
   const [files, setFiles] = useState([]);
   const [folder, setFolder] = useState('/');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchFiles = (f) => {
+  const authHeaders = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session?.access_token}`,
+    };
+  }, [supabase]);
+
+  const fetchFiles = async (f) => {
     setLoading(true);
     setError(null);
-    fetch(`/api/documents/files?folder=${encodeURIComponent(f)}`)
+    const headers = await authHeaders();
+    fetch(`/api/documents/files?folder=${encodeURIComponent(f)}`, { headers })
       .then(r => r.ok ? r.json() : Promise.reject('Failed to load'))
       .then(data => { setFiles(data.files); setFolder(data.folder); })
       .catch(e => setError(e.message || String(e)))
@@ -21,13 +30,15 @@ export default function Documents({ user }) {
 
   const navTo = (f) => fetchFiles(folder === '/' ? `/${f}` : `${folder}/${f}`);
 
+  const signOut = () => supabase.auth.signOut();
+
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>Documents</h1>
         <div>
-          <span style={{ marginRight: '1rem', color: '#666' }}>{user?.displayName}</span>
-          <a href="/api/auth/logout"><button style={{ background: '#eee' }}>Logout</button></a>
+          <span style={{ marginRight: '1rem', color: '#666' }}>{user?.user_metadata?.full_name || user?.email}</span>
+          <button onClick={signOut} style={{ background: '#eee' }}>Logout</button>
         </div>
       </div>
 

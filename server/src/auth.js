@@ -1,49 +1,33 @@
-import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { createClient } from '@supabase/supabase-js';
 import db from './db.js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
 const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
 
-export function configureAuth() {
-  passport.use(new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: '/api/auth/google/callback',
-    },
-    async (_accessToken, _refreshToken, profile, done) => {
-      try {
-        const email = profile.emails[0]?.value?.toLowerCase();
-        if (!email) return done(null, false, { message: 'No email found' });
+export async function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
 
-        if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(email)) {
-          return done(null, false, { message: 'Email not authorized' });
-        }
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return res.status(401).json({ error: 'Invalid token' });
 
-        const existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-        if (!existing) {
-          db.prepare('INSERT INTO users (id, email, display_name) VALUES (?, ?, ?)').run(
-            profile.id, email, profile.displayName
-          );
-        }
+  const email = user.email?.toLowerCase();
+  if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(email)) {
+    return res.status(403).json({ error: 'Email not authorized' });
+  }
 
-        return done(null, { id: profile.id, email, displayName: profile.displayName });
-      } catch (err) {
-        return done(err);
-      }
-    }
-  ));
+  const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+  if (!existing) {
+    db.prepare('INSERT INTO users (id, email, display_name) VALUES (?, ?, ?)').run(
+      user.id, email, user.user_metadata?.full_name || email
+    );
+  }
 
-  passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser((id, done) => {
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
-    done(null, user || null);
-  });
-
-  return passport;
-}
-
-export function requireAuth(req, res, next) {
-  if (req.isAuthenticated()) return next();
-  res.status(401).json({ error: 'Not authenticated' });
+  req.user = { id: user.id, email, displayName: user.user_metadata?.full_name || email };
+  next();
 }

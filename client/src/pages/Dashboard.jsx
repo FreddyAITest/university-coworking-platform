@@ -1,25 +1,35 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 
-export default function Dashboard({ user }) {
+export default function Dashboard({ user, supabase }) {
   const [period, setPeriod] = useState('week');
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
-  const fetchTasks = (p) => {
+  const authHeaders = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session?.access_token}`,
+    };
+  }, [supabase]);
+
+  const fetchTasks = async (p) => {
     setLoading(true);
-    fetch(`/api/overview/tasks?period=${p}`)
+    const headers = await authHeaders();
+    fetch(`/api/overview/tasks?period=${p}`, { headers })
       .then(r => r.json())
       .then(d => setTasks(d.tasks || []))
       .finally(() => setLoading(false));
   };
 
-  const generateTasks = () => {
+  const generateTasks = async () => {
     setGenerating(true);
+    const headers = await authHeaders();
     fetch('/api/overview/generate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ period }),
     })
       .then(r => r.json())
@@ -30,6 +40,8 @@ export default function Dashboard({ user }) {
   useEffect(() => { fetchTasks('week'); }, []);
 
   const switchPeriod = (p) => { setPeriod(p); fetchTasks(p); };
+
+  const signOut = () => supabase.auth.signOut();
 
   const priorityColor = {
     high: '#d32f2f',
@@ -42,8 +54,8 @@ export default function Dashboard({ user }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>Dashboard</h1>
         <div>
-          <span style={{ marginRight: '1rem', color: '#666' }}>{user?.displayName}</span>
-          <a href="/api/auth/logout"><button style={{ background: '#eee' }}>Logout</button></a>
+          <span style={{ marginRight: '1rem', color: '#666' }}>{user?.user_metadata?.full_name || user?.email}</span>
+          <button onClick={signOut} style={{ background: '#eee' }}>Logout</button>
         </div>
       </div>
 
