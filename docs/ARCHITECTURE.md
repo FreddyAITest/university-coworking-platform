@@ -12,9 +12,9 @@ A web platform that connects to a shared OneDrive space, uses AI to sort univers
 | Backend | Node.js + Express | JS everywhere, massive ecosystem, simple |
 | Auth | Supabase Auth (Google OAuth provider) | Managed, JWT-based, free tier |
 | AI | Claude API (Anthropic SDK) | Best doc understanding, already in toolchain |
-| Storage | Microsoft Graph API (OneDrive) | Direct integration, no extra infra |
+| Storage | Local filesystem | Zero external dependencies, simple file ops |
 | Database | SQLite (via better-sqlite3) | Zero setup, enough for single-user/small team |
-| Deployment | Single VPS or Vercel + Render | Simple, cheap, fast to ship |
+| Deployment | Netlify (client) + any Node host (server) | Free tier, fast CDN, simple config |
 
 ## System Design
 
@@ -37,12 +37,12 @@ A web platform that connects to a shared OneDrive space, uses AI to sort univers
        │              │               │
        ▼              ▼               ▼
 ┌────────────┐ ┌────────────┐ ┌──────────────┐
-│  SQLite    │ │  Claude    │ │  Microsoft   │
-│  (local)   │ │  API       │ │  Graph API   │
-│            │ │            │ │  (OneDrive)  │
-│ users      │ │ doc sort   │ │              │
-│ sessions   │ │ overview   │ │ file storage │
-│ tasks      │ │ extraction │ │ folder mgmt  │
+│  SQLite    │ │  Claude    │ │  Local       │
+│  (local)   │ │  API       │ │  Filesystem  │
+│            │ │            │ │              │
+│ users      │ │ doc sort   │ │ file storage │
+│ sessions   │ │ overview   │ │ folder mgmt  │
+│ tasks      │ │ extraction │ │              │
 │ config     │ │            │ │              │
 └────────────┘ └────────────┘ └──────────────┘
 ```
@@ -57,18 +57,18 @@ A web platform that connects to a shared OneDrive space, uses AI to sort univers
 - User whitelist in config (only allowed Google accounts can log in)
 - Users auto-synced to local SQLite on first authenticated request
 
-### 2. OneDrive Integration (`/api/docs/*`)
+### 2. File Storage (`/api/docs/*`)
 
-- Microsoft Graph API via OAuth2 (on-behalf-of or app-only)
-- OneDrive folder watcher: poll every 5 min for new/changed files
-- File metadata indexed in SQLite for fast listing/search
-- Support for folder creation, renaming, moving via API
+- Local filesystem storage in a configurable directory (`STORAGE_PATH`)
+- File listing with metadata (size, modified date, type)
+- Folder creation and file move operations
+- File content reads for AI processing (Claude API)
 
 ### 3. AI Document Sorting
 
 - On new file detection: send file content to Claude API
 - Claude classifies the document and returns target folder path
-- System moves the file to the target folder via Graph API
+- System moves the file to the target folder on local filesystem
 - Sorting rules configurable per folder hierarchy
 
 ### 4. Task Overview Engine (`/api/overview/*`)
@@ -92,8 +92,8 @@ A web platform that connects to a shared OneDrive space, uses AI to sort univers
 - React shell with Supabase login page
 - SQLite schema (users, tasks, documents)
 
-### Phase 2: OneDrive Connection (1-2 days)
-- Microsoft Graph API integration
+### Phase 2: File Storage (1 day)
+- Local filesystem storage module
 - File listing/browsing API
 - Folder tree UI in frontend
 
@@ -109,15 +109,15 @@ A web platform that connects to a shared OneDrive space, uses AI to sort univers
 
 ### Phase 5: Polish & Deploy (1 day)
 - Error handling, loading states
-- Deploy to VPS or cloud
+- Deploy client to Netlify, server to preferred Node host
 - README + setup docs
 
 ## Data Flow: Document Upload → Sorted
 
-1. User drops file in OneDrive "Inbox" folder (or uploads via web)
-2. Poller detects new file → stores metadata in SQLite
+1. User drops file in storage "Inbox" folder (or uploads via web)
+2. Scan detects new file → stores metadata in SQLite
 3. Sort job picks up unsorted files → sends content to Claude API
-4. Claude returns classification → file moved to target folder
+4. Claude returns classification → file moved to target folder on local filesystem
 5. Frontend updates to show sorted status
 
 ## Data Flow: Overview Generation
@@ -132,6 +132,5 @@ A web platform that connects to a shared OneDrive space, uses AI to sort univers
 
 - Supabase Auth (Google OAuth) ensures only authorized users access the site
 - JWT-based auth — no sessions, no cookies
-- OneDrive credentials stored as env vars, never in code
 - Claude API key server-side only
-- No user data leaves the server except to Claude API (processing) and OneDrive (storage)
+- User data stored on local filesystem, never leaves the server except to Claude API (processing)

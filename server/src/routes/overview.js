@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../auth.js';
-import { downloadFile } from '../onedrive.js';
+import { downloadFile } from '../storage.js';
 import { extractTasks } from '../sorter.js';
 import db from '../db.js';
 
@@ -26,7 +26,7 @@ router.post('/generate', async (req, res) => {
     const allTasks = [];
     for (const doc of docs) {
       try {
-        const content = await downloadFile(doc.onedrive_id);
+        const content = await downloadFile(doc.storage_path);
         const tasks = await extractTasks(content, period);
 
         const insertTask = db.prepare(

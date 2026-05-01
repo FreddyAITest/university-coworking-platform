@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../auth.js';
-import { listFiles, downloadFile, moveFile } from '../onedrive.js';
+import { listFiles, downloadFile, moveFile } from '../storage.js';
 import { classifyDocument } from '../sorter.js';
 import db from '../db.js';
 
@@ -17,16 +17,16 @@ router.post('/scan', async (req, res) => {
   try {
     const files = await listFiles('/');
     const existing = new Set(
-      db.prepare('SELECT onedrive_id FROM documents').all().map(r => r.onedrive_id)
+      db.prepare('SELECT storage_path FROM documents').all().map(r => r.storage_path)
     );
 
-    const newFiles = files.filter(f => !f.folder && !existing.has(f.id));
+    const newFiles = files.filter(f => !f.folder && !existing.has(f.name));
     const insert = db.prepare(
-      'INSERT OR IGNORE INTO documents (id, onedrive_id, name, folder_path, status) VALUES (?, ?, ?, ?, ?)'
+      'INSERT OR IGNORE INTO documents (id, storage_path, name, folder_path, status) VALUES (?, ?, ?, ?, ?)'
     );
 
     for (const f of newFiles) {
-      insert.run(crypto.randomUUID(), f.id, f.name, '/', 'unsorted');
+      insert.run(crypto.randomUUID(), f.name, f.name, '/', 'unsorted');
     }
 
     res.json({ scanned: newFiles.length, total: files.length });
@@ -46,11 +46,11 @@ router.post('/run', async (_req, res) => {
     const results = [];
     for (const doc of unsorted) {
       try {
-        const content = await downloadFile(doc.onedrive_id);
+        const content = await downloadFile(doc.storage_path);
         const classification = await classifyDocument(doc.name, content, folders);
 
         const targetFolder = classification.folder || '/Unsorted';
-        await moveFile(doc.onedrive_id, targetFolder);
+        await moveFile(doc.storage_path, targetFolder);
 
         db.prepare('UPDATE documents SET status = ?, folder_path = ?, metadata = ?, updated_at = datetime(?) WHERE id = ?')
           .run('sorted', targetFolder, JSON.stringify(classification), 'now', doc.id);

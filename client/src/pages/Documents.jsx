@@ -57,7 +57,7 @@ export default function Documents({ user, supabase }) {
         {loading ? (
           <p style={{ color: '#999' }}>Loading...</p>
         ) : files.length === 0 ? (
-          <p style={{ color: '#999' }}>No files found. Connect OneDrive to see your documents.</p>
+          <p style={{ color: '#999' }}>No files found. Upload documents to the storage folder to get started.</p>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>

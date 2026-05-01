@@ -88,7 +88,7 @@ export default function Dashboard({ user, supabase }) {
           <p style={{ color: '#999' }}>Loading tasks...</p>
         ) : tasks.length === 0 ? (
           <p style={{ color: '#999' }}>
-            No tasks yet. Click "Generate Tasks" to run AI extraction from your OneDrive documents.
+            No tasks yet. Click "Generate Tasks" to run AI extraction from your documents.
           </p>
         ) : (
           <div>

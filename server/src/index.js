@@ -24,7 +24,7 @@ app.post('/api/auth/logout', (_req, res) => {
   res.json({ ok: true });
 });
 
-// Document / OneDrive routes
+// Document / storage routes
 app.use('/api/documents', documentsRouter);
 
 // AI sorting routes

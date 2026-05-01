@@ -17,7 +17,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS documents (
     id TEXT PRIMARY KEY,
-    onedrive_id TEXT UNIQUE,
+    storage_path TEXT UNIQUE,
     name TEXT NOT NULL,
     folder_path TEXT,
     status TEXT DEFAULT 'unsorted',
