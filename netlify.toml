@@ -4,7 +4,7 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://your-api-server.com/api/:splat"
+  to = "http://87.106.176.66:3001/api/:splat"
   status = 200
 
 [[redirects]]
