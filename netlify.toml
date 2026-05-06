@@ -2,6 +2,9 @@
   command = "cd client && npm install && npm run build"
   publish = "client/dist"
 
+[build.environment]
+  VITE_DEV_MODE = "true"
+
 [[redirects]]
   from = "/api/*"
   to = "http://87.106.176.66:3001/api/:splat"
