@@ -8,10 +8,12 @@ export default function Dashboard({ user, supabase }) {
   const [generating, setGenerating] = useState(false);
 
   const authHeaders = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const token = import.meta.env.VITE_DEV_MODE === 'true'
+      ? 'dev-board-user'
+      : (await supabase?.auth.getSession())?.data?.session?.access_token;
     return {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${session?.access_token}`,
+      Authorization: `Bearer ${token}`,
     };
   }, [supabase]);
 

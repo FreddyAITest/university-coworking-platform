@@ -7,12 +7,27 @@ const supabase = createClient(
 );
 
 const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
+const DEV_MODE = process.env.DEV_MODE === 'true';
 
 export async function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
 
   const token = authHeader.replace('Bearer ', '');
+
+  if (DEV_MODE && token.startsWith('dev-')) {
+    const email = 'board@localhost';
+    const id = 'dev-user';
+    const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    if (!existing) {
+      db.prepare('INSERT INTO users (id, email, display_name) VALUES (?, ?, ?)').run(
+        id, email, 'Board User'
+      );
+    }
+    req.user = { id, email, displayName: 'Board User' };
+    return next();
+  }
+
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return res.status(401).json({ error: 'Invalid token' });
 
